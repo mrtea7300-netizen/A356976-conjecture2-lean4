@@ -1,0 +1,265 @@
+\documentclass[11pt,reqno]{amsart}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\N}{\mathbb{N}}
+
+\title[The Discriminator of $2k^3 + k$]{A Proof and Formal Verification of Zhi-Wei Sun's Conjecture on the Discriminator of $2k^3 + k$}
+
+\author{Tea (mrtea7300-netizen) \and Collaborators}
+\date{November 25, 2026}
+
+\subjclass[2020]{11A07, 11B50, 11D79, 68V20}
+\keywords{Discriminator, cubic polynomial, congruence, Eisenstein norm form, Hensel lifting, Lean 4}
+
+\begin{document}
+
+\begin{abstract}
+For a sequence $(a_k)_{k \ge 1}$ of integers, the \emph{discriminator} $D_a(n)$ is the least positive integer $m$ such that $a_1, a_2, \dots, a_n$ are pairwise incongruent modulo $m$. On November 16, 2021, Zhi-Wei Sun conjectured in OEIS entry \href{https://oeis.org/A356976}{A356976} (Conjecture~2) that the discriminator of the cubic polynomial sequence $f(k) = 2k^3 + k$ is $2^{\lceil \log_2 n \rceil}$, the least power of $2$ not smaller than $n$, and verified this computationally up to $n = 10^5$.
+
+We prove Sun's conjecture for all positive integers $n$. The proof is completely elementary and self-contained: powers of $2$ work because $2(x^2 + xy + y^2) + 1$ is always odd; moduli divisible by $3$ yield a collision by the pigeonhole principle; and moduli divisible by any prime $p \ge 17$ are settled by a purely algebraic conic-box lemma on $u^2 + uv + v^2 \equiv c \pmod p$ (via stereographic projection and a parity folding argument) lifted to arbitrary prime powers $p^e$ by a pigeonhole Hensel induction. The remaining $\{2,5,7,11,13\}$-smooth moduli are handled by the same lifting from verified base powers together with a finite check. The entire proof has been formally verified in pure Lean~4 (v4.36.0) with zero external dependencies and no \texttt{sorry}s, depending only on the standard axioms \texttt{[propext, Classical.choice, Quot.sound]}.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+
+Given an integer sequence $a = (a_k)_{k \ge 1}$, its \emph{discriminator} $D_a(n)$ is defined for each $n \ge 1$ as the least positive integer $m$ such that $a_1, a_2, \dots, a_n$ are pairwise distinct modulo $m$. Introduced by Arnold, Benkoski, and McCabe~\cite{ABM1985} for the sequence of squares $a_k = k^2$, discriminators have since been determined for a variety of quadratic polynomials, linear recurrences, and other arithmetic sequences (see, e.g., Bremser, Schumer, and Washington~\cite{BSW1990}, Moree and Zumalac\'arregui~\cite{MZ2016}, and Faye, Luca, and Moree~\cite{FLM2019}).
+
+In November 2021, Zhi-Wei Sun~\cite{SunA356976} introduced OEIS sequence \texttt{A356976} (the discriminator of $k^3 + 3k$) and formulated four conjectures concerning the discriminators of cubic polynomials of the form $ak^3 + bk$. In particular, Conjecture~2 of \texttt{A356976} asserts the following.
+
+\begin{theorem}[OEIS A356976, Conjecture~2]\label{thm:main}
+Let $f(k) = 2k^3 + k$. For every positive integer $n$, the least positive integer $m$ such that $f(1), f(2), \dots, f(n)$ are pairwise distinct modulo $m$ is $2^{\lceil \log_2 n \rceil}$, the least power of $2$ not smaller than $n$.
+\end{theorem}
+
+Sun verified Theorem~\ref{thm:main} computationally for all $n \le 10^5$. In this paper we give a complete, elementary proof of Theorem~\ref{thm:main} for all $n \ge 1$, together with a standalone machine-checked formalization in pure Lean~4 (\texttt{A356976Conj2.lean}).
+
+\section{Upper Bound and Reduction of the Lower Bound}
+
+The key algebraic identity throughout the paper is the factorization
+\begin{equation}\label{eq:factor}
+f(y) - f(x) = (y - x)\bigl(2(x^2 + xy + y^2) + 1\bigr).
+\end{equation}
+
+\begin{lemma}[Upper bound]\label{lem:upper}
+For every integer $r \ge 0$, the map $k \mapsto f(k) = 2k^3 + k$ is a bijection on $\Z/2^r\Z$. In particular, $D_f(n) \le 2^{\lceil \log_2 n \rceil}$ for all $n \ge 1$.
+\end{lemma}
+
+\begin{proof}
+Since $2(x^2 + xy + y^2) + 1$ is odd for all $x, y \in \Z$, it follows from~\eqref{eq:factor} that $2^r \mid (f(y) - f(x))$ if and only if $2^r \mid (y - x)$. Hence $f$ is injective (and therefore bijective) on $\Z/2^r\Z$. Taking $m = 2^{\lceil \log_2 n \rceil} \ge n$ shows that $f(1), \dots, f(n)$ are pairwise distinct modulo $m$.
+\end{proof}
+
+To prove $D_f(n) = 2^{\lceil \log_2 n \rceil}$, let $r = \lceil \log_2 n \rceil$ and suppose $1 \le m < 2^r$. If $m$ is itself a power of $2$, then $m \le 2^{r-1} < n$, so $f(1), \dots, f(n)$ cannot be pairwise distinct modulo $m$ by the pigeonhole principle. If $m$ is \emph{not} a power of $2$, let $2^{\lfloor \log_2 m \rfloor}$ be the largest power of $2$ less than $m$; then $2^{\lfloor \log_2 m \rfloor} \le 2^{r-1} < n$, so $2^{\lfloor \log_2 m \rfloor} + 1 \le n$. Thus Theorem~\ref{thm:main} reduces to the following statement.
+
+\begin{proposition}[Collision bound]\label{prop:collision}
+For every positive integer $m$ that is not a power of $2$, there exist integers $x, y$ with
+\[
+1 \le x < y \le 2^{\lfloor \log_2 m \rfloor} + 1
+\qquad\text{and}\qquad
+f(x) \equiv f(y) \pmod m.
+\]
+\end{proposition}
+
+Note that when $2^k < m < 2^{k+1}$ we have $m \le 2^{k+1} - 1$, hence $\lfloor m/2 \rfloor \le 2^k = 2^{\lfloor \log_2 m \rfloor}$. Therefore any collision with $1 \le x < y \le \lfloor m/2 \rfloor + 1$ automatically satisfies Proposition~\ref{prop:collision}.
+
+\section{Moduli Divisible by $3$}
+
+\begin{lemma}\label{lem:three}
+If $3 \mid m$, then there exist integers $1 \le x < y \le 1 + \lfloor m/3 \rfloor$ with $f(x) \equiv f(y) \pmod m$.
+\end{lemma}
+
+\begin{proof}
+Write $m = 3^e d$ with $e \ge 1$ and $3 \nmid d$. For every integer $k$, $f(k) = 2k^3 + k \equiv 2k + k = 3k \equiv 0 \pmod 3$, so $f(k) \bmod 3^e$ lies in $3\Z/3^e\Z$, a set of cardinality $3^{e-1}$.
+
+Consider the $3^{e-1} + 1$ integers $k_j = 1 + j d$ for $j = 0, 1, \dots, 3^{e-1}$. By the pigeonhole principle, there exist $0 \le i < j \le 3^{e-1}$ such that $f(k_i) \equiv f(k_j) \pmod{3^e}$. Since $d \mid (k_j - k_i)$, we also have $f(k_i) \equiv f(k_j) \pmod d$ by~\eqref{eq:factor}. Because $\gcd(3^e, d) = 1$, it follows that $f(k_i) \equiv f(k_j) \pmod m$. Finally,
+\[
+1 \le k_i < k_j \le 1 + 3^{e-1} d = 1 + \frac{m}{3} \le 2^{\lfloor \log_2 m \rfloor} + 1. \qedhere
+\]
+\end{proof}
+
+\section{The Conic Box Lemma and Pigeonhole Hensel Lifting}
+
+For an odd prime $p \ge 5$, write $m = p^e d$ with $e \ge 1$ and $p \nmid d$. Setting $x = ud$ and $y = vd$ with $1 \le u < v \le \frac{p^e - 1}{2}$ automatically yields $1 \le x < y \le \frac{p^e - 1}{2} d < \frac{m}{2}$ and $d \mid (f(y) - f(x))$. By~\eqref{eq:factor}, we also have $p^e \mid (f(y) - f(x))$ provided that
+\begin{equation}\label{eq:conic}
+u^2 + uv + v^2 \equiv c \pmod{p^e}, \qquad\text{where } c \equiv -(2d^2)^{-1} \pmod{p^e}.
+\end{equation}
+Notice that $p \nmid c$. This motivates the following condition $\mathcal{C}(p, e)$: for every $c \in \Z$ with $p \nmid c$, there exist integers $u, v$ such that
+\begin{equation}\label{eq:conicbox}
+1 \le u < v \le \frac{p^e - 1}{2}, \quad
+u^2 + uv + v^2 \equiv c \pmod{p^e}, \quad
+p \nmid (2u + v), \quad p \nmid (u + 2v).
+\end{equation}
+
+\begin{lemma}[Pigeonhole Hensel Lifting]\label{lem:lift}
+Let $p \ge 5$ be a prime and $e \ge 1$. If $\mathcal{C}(p, e)$ holds, then $\mathcal{C}(p, e+1)$ holds.
+\end{lemma}
+
+\begin{proof}
+Let $c \in \Z$ with $p \nmid c$, and let $(u_1, v_1)$ satisfy~\eqref{eq:conicbox} for $p^e$. Set $a = 2u_1 + v_1$ and $b = u_1 + 2v_1$, so $p \nmid a$ and $p \nmid b$. Write
+\[
+u = u_1 + k p^e, \qquad v = v_1 + \ell p^e, \qquad k, \ell \in \left\{0, 1, \dots, \frac{p-1}{2}\right\}.
+\]
+Since $2e \ge e + 1$, expanding gives
+\[
+u^2 + uv + v^2 \equiv u_1^2 + u_1 v_1 + v_1^2 + p^e(a k + b \ell) \pmod{p^{e+1}}.
+\]
+Let $w \in \Z$ satisfy $u_1^2 + u_1 v_1 + v_1^2 + p^e w \equiv c \pmod{p^{e+1}}$. As $k$ and $\ell$ each range over $\{0, 1, \dots, \frac{p-1}{2}\}$, the sets $A = \{ak \bmod p\}$ and $B = \{(w - b\ell) \bmod p\}$ are subsets of $\F_p$ of size $\frac{p+1}{2}$. Since $|A| + |B| = p + 1 > p$, by the pigeonhole principle there exist $k, \ell \in \{0, 1, \dots, \frac{p-1}{2}\}$ with $ak + b\ell \equiv w \pmod p$.
+
+Then $u^2 + uv + v^2 \equiv c \pmod{p^{e+1}}$. Moreover,
+\[
+1 \le u = u_1 + k p^e \le \frac{p^e - 1}{2} + \frac{p - 1}{2} p^e = \frac{p^{e+1} - 1}{2},
+\]
+and identically $1 \le v \le \frac{p^{e+1} - 1}{2}$. Since $1 \le u_1 < v_1 < p^e$, we have $u \equiv u_1 \not\equiv v_1 \equiv v \pmod{p^e}$, so $u \neq v$. Finally, $2u + v \equiv a \not\equiv 0 \pmod p$ and $u + 2v \equiv b \not\equiv 0 \pmod p$. Swapping $u$ and $v$ if $u > v$ yields a valid solution for $p^{e+1}$.
+\end{proof}
+
+We now prove the base case $\mathcal{C}(p, 1)$ for all primes $p \ge 17$ by a completely elementary algebraic argument, requiring neither exponential sum bounds nor finite prime checks.
+
+\begin{lemma}[Conic Box Lemma]\label{lem:conicbox}
+For every prime $p \ge 17$, condition $\mathcal{C}(p, 1)$ holds.
+\end{lemma}
+
+\begin{proof}
+Fix a prime $p \ge 17$ and $c \in \F_p^\times$.
+
+\emph{Step 1: Existence of one point on $X^2 + 3Y^2 \equiv 4c \pmod p$.}
+As $X$ and $Y$ each range over $\{0, 1, \dots, \frac{p-1}{2}\}$, the sets $\{X^2 \bmod p\}$ and $\{(4c - 3Y^2) \bmod p\}$ each have size $\frac{p+1}{2}$ in $\F_p$. Since $\frac{p+1}{2} + \frac{p+1}{2} = p + 1 > p$, the pigeonhole principle yields $(X_0, Y_0) \in \F_p^2$ with $X_0^2 + 3Y_0^2 \equiv 4c \pmod p$.
+
+\emph{Step 2: Stereographic parametrization.}
+For every $t \in \F_p$ with $t^2 + 3 \not\equiv 0 \pmod p$, define
+\[
+X(t) = \frac{X_0(t^2 - 3) - 6 Y_0 t}{t^2 + 3}, \qquad
+Y(t) = \frac{Y_0(3 - t^2) - 2 X_0 t}{t^2 + 3} \pmod p.
+\]
+Direct polynomial expansion gives
+\[
+\bigl(X_0(t^2-3) - 6Y_0 t\bigr)^2 + 3\bigl(Y_0(3-t^2) - 2X_0 t\bigr)^2 = (t^2 + 3)^2(X_0^2 + 3Y_0^2),
+\]
+so $X(t)^2 + 3Y(t)^2 \equiv 4c \pmod p$. Furthermore, $t \mapsto (X(t), Y(t))$ is injective on $\{t \in \F_p : t^2 + 3 \neq 0\}$: setting
+\begin{align*}
+A(t) &:= X_0(X(t) - X_0) - 3Y_0(Y(t) + Y_0) \equiv \frac{-24c}{t^2 + 3} \pmod p, \\
+B(t) &:= Y_0(X(t) - X_0) + X_0(Y(t) + Y_0) \equiv \frac{-8ct}{t^2 + 3} \pmod p,
+\end{align*}
+we have $3B(t) \equiv t A(t) \pmod p$ with $A(t) \not\equiv 0 \pmod p$ (since $p \ge 17$ and $p \nmid c$), so $t$ is uniquely determined by $(X(t), Y(t))$.
+
+\emph{Step 3: Avoiding degenerate points.}
+Among the $p$ elements $t \in \F_p$, exclude those satisfying any of the following five conditions:
+\begin{enumerate}
+\item $t^2 + 3 \equiv 0 \pmod p$ (at most $2$ values of $t$);
+\item $X(t) \equiv 0 \pmod p$, which forces $3Y(t)^2 \equiv 4c \pmod p$ (at most $2$ values of $t$ by injectivity);
+\item $Y(t) \equiv 0 \pmod p$, which forces $X(t)^2 \equiv 4c \pmod p$ (at most $2$ values of $t$);
+\item $X(t) \equiv \pm Y(t) \pmod p$, which forces $X(t)^2 \equiv Y(t)^2 \equiv c \pmod p$ (at most $4$ values of $t$);
+\item $3Y(t)^2 \equiv c \pmod p$, which forces $Y(t)^2 \equiv 3^{-1}c$ and $X(t)^2 \equiv 3c \pmod p$ (at most $4$ values of $t$).
+\end{enumerate}
+In total, at most $2 + 2 + 2 + 4 + 4 = 14 < 17 \le p$ elements of $\F_p$ are excluded. Pick $t \in \F_p$ avoiding all five conditions, and fold the coordinates into $[1, \frac{p-1}{2}]$ by setting
+\[
+X = \min\bigl(X(t),\, p - X(t)\bigr), \qquad Y = \min\bigl(Y(t),\, p - Y(t)\bigr).
+\]
+Then $1 \le X, Y \le \frac{p-1}{2}$, $X \neq Y$, $X^2 + 3Y^2 \equiv 4c \pmod p$, and $3Y^2 \not\equiv c \pmod p$.
+
+\emph{Step 4: Parity construction of $(u, v)$.}
+We construct $(u, v)$ in three exhaustive cases:
+\begin{itemize}
+\item \emph{$X \equiv Y \pmod 2$ and $Y > X$:} Set $u = \frac{Y - X}{2}$ and $v = \frac{X + Y}{2}$. Then $1 \le u < v \le \frac{p-1}{2}$, $4(u^2 + uv + v^2) = X^2 + 3Y^2 \equiv 4c \pmod p$, and $0 < 2u + v = \frac{3Y - X}{2} < p$ and $0 < u + 2v = \frac{3Y + X}{2} < p$.
+\item \emph{$X \equiv Y \pmod 2$ and $X > Y$:} Set $u = \frac{X - Y}{2}$ and $v = Y$. Then $1 \le u, v \le \frac{p-1}{2}$, $4(u^2 + uv + v^2) = X^2 + 3Y^2 \equiv 4c \pmod p$, and $0 < 2u + v = X < p$ and $0 < u + 2v = \frac{X + 3Y}{2} < p$. Moreover $u \neq v$, since $u = v$ implies $X = 3Y$, giving $12Y^2 \equiv 4c \implies 3Y^2 \equiv c \pmod p$, a contradiction.
+\item \emph{$X \not\equiv Y \pmod 2$:} Since $p$ is odd, $p - X \equiv Y \pmod 2$. Set $u = \frac{p - X - Y}{2}$ and $v = Y$. Then $1 \le u, v \le \frac{p-1}{2}$, and
+\[
+4(u^2 + uv + v^2) = (p - X)^2 + 3Y^2 \equiv X^2 + 3Y^2 \equiv 4c \pmod p.
+\]
+We have $0 < 2u + v = p - X < p$, so $p \nmid (2u + v)$. Also $u \neq v$ (else $X + 3Y = p$, so $X^2 + 3Y^2 \equiv 12Y^2 \equiv 4c \implies 3Y^2 \equiv c \pmod p$) and $p \nmid (u + 2v)$ (since $0 < u + 2v = \frac{p - X + 3Y}{2} < 2p$, divisibility by $p$ forces $u + 2v = p$, i.e., $3Y - X = p$, which again implies $3Y^2 \equiv c \pmod p$).
+\end{itemize}
+Canceling $4$ modulo $p$ and swapping $u, v$ if $u > v$ completes the proof.
+\end{proof}
+
+\section{Completion of the Proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:collision} and Theorem~\ref{thm:main}]
+Let $m \ge 1$ be any integer that is not a power of $2$.
+
+\textbf{Case 1 ($3 \mid m$).} Handled by Lemma~\ref{lem:three}.
+
+\textbf{Case 2 ($m$ has a prime factor $p \ge 17$).} Write $m = p^e d$ with $e \ge 1$ and $p \nmid d$. By Lemmas~\ref{lem:conicbox} and~\ref{lem:lift}, $\mathcal{C}(p, e)$ holds. Taking $c \equiv -(2d^2)^{-1} \pmod{p^e}$ gives $(u, v)$ satisfying~\eqref{eq:conicbox}, and $x = ud$, $y = vd$ gives $1 \le x < y < \frac{m}{2} \le 2^{\lfloor \log_2 m \rfloor}$ with $f(x) \equiv f(y) \pmod m$.
+
+\textbf{Case 3 ($m$ is divisible by $5^3$, $7^3$, $11^2$, or $13^2$).} Direct verification confirms that $\mathcal{C}(5, 3)$, $\mathcal{C}(7, 3)$, $\mathcal{C}(11, 2)$, and $\mathcal{C}(13, 2)$ hold (explicit witness tables of sizes $125, 343, 121, 169$ are checked in-kernel in \texttt{A356976Conj2.lean}). By Lemma~\ref{lem:lift}, $\mathcal{C}(p, e)$ holds for all $e \ge e_0$, and setting $x = ud, y = vd$ finishes this case as in Case~2.
+
+\textbf{Case 4 (remaining moduli).} Every remaining non-power-of-$2$ modulus has the form
+\[
+m = 2^a \cdot 5^c \cdot 7^d \cdot 11^e \cdot 13^g,
+\qquad c \le 2,\ d \le 2,\ e \le 1,\ g \le 1,\ (c,d,e,g) \neq (0,0,0,0).
+\]
+\begin{itemize}
+\item \emph{Subcase 4a ($a \ge 7$, so $2^a \ge 128$).} Pick a prime $p \in \{5, 7, 11, 13\}$ dividing $m$ and write $m = q \cdot d'$ with $q = p^k \in \{5, 25, 7, 49, 11, 13\}$ and $p \nmid d'$. Then $d' \ge 2^a \ge 128 \ge 2q - 2$. For each $q$ and each residue $d_0 \equiv d' \pmod q$ with $p \nmid d_0$, we exhibit explicit integers $1 \le x \le q$ and $1 \le t \le \frac{q-1}{2}$ such that
+\[
+2\bigl(x^2 + x(x + td_0) + (x + td_0)^2\bigr) + 1 \equiv 0 \pmod q.
+\]
+Setting $y = x + t d'$ gives $q \mid (f(y) - f(x))$ and $d' \mid (f(y) - f(x))$, hence $m \mid (f(y) - f(x))$, and
+\[
+y = x + t d' \le q + \frac{q - 1}{2} d' \le \frac{q d'}{2} + 1 = \frac{m}{2} + 1 \le 2^{\lfloor \log_2 m \rfloor} + 1.
+\]
+\item \emph{Subcase 4b ($0 \le a \le 6$).} There are exactly $7 \times (3 \cdot 3 \cdot 2 \cdot 2 - 1) = 245$ such moduli $m$. For each of them, an explicit collision pair $1 \le x < y \le 2^{\lfloor \log_2 m \rfloor} + 1$ with $f(x) \equiv f(y) \pmod m$ is verified directly.
+\end{itemize}
+This completes the proof of Proposition~\ref{prop:collision}, and hence of Theorem~\ref{thm:main}.
+\end{proof}
+
+\section{Formal Verification in Lean 4}
+
+The complete proof of Theorem~\ref{thm:main} is formalized in the single standalone file \texttt{A356976Conj2.lean} using pure Lean~4 (\texttt{v4.36.0}) with zero external dependencies (no Mathlib required). The main theorem is stated directly from the definition as:
+\begin{verbatim}
+def f (k : Nat) : Nat := 2 * k ^ 3 + k
+
+def DistinctMod (n m : Nat) : Prop :=
+  ∀ x y, 1 ≤ x → x ≤ n → 1 ≤ y → y ≤ n → f x % m = f y % m → x = y
+
+theorem a356976_conjecture_2 (n : Nat) (hn : 1 ≤ n) :
+    ∃ r : Nat,
+      n ≤ 2 ^ r ∧
+      (r = 0 ∨ 2 ^ (r - 1) < n) ∧
+      DistinctMod n (2 ^ r) ∧
+      ∀ m : Nat, 1 ≤ m → m < 2 ^ r → ¬ DistinctMod n m
+\end{verbatim}
+All finite witness checks (the four base tables for $5^3, 7^3, 11^2, 13^2$, the six large-$d$ tables for $5, 25, 7, 49, 11, 13$, and the $245$ remaining smooth moduli) are verified by Lean's kernel \texttt{decide} tactic rather than \texttt{native\_decide}. Running \texttt{lean A356976Conj2.lean} exits with status~$0$, zero warnings, and outputs:
+\begin{verbatim}
+'A356976Conj2.a356976_conjecture_2' depends on axioms:
+  [propext, Classical.choice, Quot.sound]
+\end{verbatim}
+
+\begin{thebibliography}{9}
+
+\bibitem{ABM1985}
+L.~K.~Arnold, S.~J.~Benkoski, and B.~J.~McCabe,
+\emph{The discriminator (a simple application of Bertrand's postulate)},
+Amer.\ Math.\ Monthly \textbf{92} (1985), 275--277.
+
+\bibitem{BSW1990}
+P.~S.~Bremser, P.~D.~Schumer, and L.~C.~Washington,
+\emph{A note on the incongruence of consecutive integers to a fixed power},
+J.\ Number Theory \textbf{35} (1990), 105--108.
+
+\bibitem{FLM2019}
+B.~Faye, F.~Luca, and P.~Moree,
+\emph{On the discriminator of Lucas sequences},
+Ann.\ Math.\ Qu\'e.\ \textbf{43} (2019), 51--71.
+
+\bibitem{MZ2016}
+P.~Moree and A.~Zumalac\'arregui,
+\emph{Salajan's conjecture on discriminating terms in an exponential sequence},
+J.\ Number Theory \textbf{160} (2016), 646--665.
+
+\bibitem{SunA356976}
+Z.-W.~Sun,
+\emph{OEIS sequence A356976: Least positive integer $m$ such that the numbers $k^3 + 3k$ ($k = 1..n$) are pairwise distinct modulo $m$},
+The On-Line Encyclopedia of Integer Sequences, Nov.\ 16, 2021, \url{https://oeis.org/A356976}.
+
+\end{thebibliography}
+
+\end{document}
