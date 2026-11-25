@@ -218,14 +218,14 @@ The complete proof of Theorem~\ref{thm:main} is formalized in the single standal
 def f (k : Nat) : Nat := 2 * k ^ 3 + k
 
 def DistinctMod (n m : Nat) : Prop :=
-  ∀ x y, 1 ≤ x → x ≤ n → 1 ≤ y → y ≤ n → f x % m = f y % m → x = y
+  forall x y, 1 <= x -> x <= n -> 1 <= y -> y <= n -> f x % m = f y % m -> x = y
 
-theorem a356976_conjecture_2 (n : Nat) (hn : 1 ≤ n) :
-    ∃ r : Nat,
-      n ≤ 2 ^ r ∧
-      (r = 0 ∨ 2 ^ (r - 1) < n) ∧
-      DistinctMod n (2 ^ r) ∧
-      ∀ m : Nat, 1 ≤ m → m < 2 ^ r → ¬ DistinctMod n m
+theorem a356976_conjecture_2 (n : Nat) (hn : 1 <= n) :
+    exists r : Nat,
+      n <= 2 ^ r /\
+      (r = 0 \/ 2 ^ (r - 1) < n) /\
+      DistinctMod n (2 ^ r) /\
+      forall m : Nat, 1 <= m -> m < 2 ^ r -> ~ DistinctMod n m
 \end{verbatim}
 All finite witness checks (the four base tables for $5^3, 7^3, 11^2, 13^2$, the six large-$d$ tables for $5, 25, 7, 49, 11, 13$, and the $245$ remaining smooth moduli) are verified by Lean's kernel \texttt{decide} tactic rather than \texttt{native\_decide}. Running \texttt{lean A356976Conj2.lean} exits with status~$0$, zero warnings, and outputs:
 \begin{verbatim}

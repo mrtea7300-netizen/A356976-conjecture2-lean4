@@ -44,7 +44,7 @@ You can also run the standalone Python sanity check (reproduces OEIS A356976 for
 python verify_conj2.py
 ```
 
-## Proof Paper & Overview ([`paper.tex`](paper.tex) | [`proof.md`](proof.md))
+## Proof Paper & Overview ([`paper.pdf`](paper.pdf) | [`paper.tex`](paper.tex) | [`proof.md`](proof.md))
 
 1. **Upper bound ($m = 2^r$):** Since $f(y) - f(x) = (y - x)(2(x^2 + xy + y^2) + 1)$ and the second factor is always odd, $f$ is a bijection on $\mathbb{Z}/2^r\mathbb{Z}$.
 2. **$3 \mid m$:** Since $3 \mid f(k)$ for all $k$, pigeonhole on $1 + j(m/3^e)$ ($0 \le j \le 3^{e-1}$) yields a collision $\le 1 + m/3 \le 2^{\lfloor \log_2 m \rfloor} + 1$.
