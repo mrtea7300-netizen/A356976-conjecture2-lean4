@@ -41,6 +41,10 @@ Expected output (exit code `0`, zero warnings, zero `sorry`, zero `native_decide
 'A356976Conj2.a356976_conjecture_2' depends on axioms: [propext, Classical.choice, Quot.sound]
 ```
 
+Independent check (@yotam1001, 2026-11-27): `lean A356976Conj2.lean` with Lean 4.36.0
+(x86_64 Linux) printed exactly the line above in 26 s, and `python verify_conj2.py` ended with
+`[PASS]`.
+
 You can also run the standalone Python sanity check (reproduces OEIS A356976 for $n = 1..38$ and brute-force checks Conjecture 2 for $n = 1..300$):
 
 ```bash
