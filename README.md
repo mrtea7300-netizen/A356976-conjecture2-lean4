@@ -1,5 +1,8 @@
 # Formal Lean 4 Proof of Zhi-Wei Sun's Conjecture 2 (OEIS A356976)
 
+**Proof & Lean 4 formalization:** [@mrtea7300-netizen](https://github.com/mrtea7300-netizen)  
+**Team contributors:** [@yotam1001](https://github.com/yotam1001), [@BoazCohenJ](https://github.com/BoazCohenJ), [@idangnlv](https://github.com/idangnlv), [@ohaventura](https://github.com/ohaventura), [@mrtea7300-netizen](https://github.com/mrtea7300-netizen)
+
 A self-contained, zero-dependency, kernel-verified **Lean 4** proof of **Conjecture 2** from Zhi-Wei Sun's [OEIS A356976](https://oeis.org/A356976) (Nov. 16, 2021).
 
 ## Conjecture Statement (verbatim from OEIS A356976)
